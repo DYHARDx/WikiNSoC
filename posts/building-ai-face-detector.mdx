@@ -1,0 +1,71 @@
+---
+title: "Building an AI-Generated Face Detector with EfficientNet-B0"
+description: "How I built and deployed a real vs StyleGAN2 face detector in 40 days, including the failures and limitations I documented along the way."
+date: "2026-10-23"
+category: "Technology"
+tags:
+  - machine-learning
+  - deep-learning
+  - computer-vision
+  - tutorial
+coverImage: "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?auto=format&fit=crop&w=1200&q=80"
+published: true
+featured: false
+---
+
+# Building an AI-Generated Face Detector with EfficientNet-B0
+
+AI-generated faces are getting harder to spot. In this article I walk through how I built a detector that separates real faces from StyleGAN2-generated ones, deployed it live, and what went wrong along the way.
+
+## The Problem
+
+Synthetic faces are used in fake profiles, scams, and misinformation. The goal: given a face image, predict **real** or **AI-generated**, and explain the prediction.
+
+## Architecture
+
+- **Model:** EfficientNet-B0 (CNN-only) as the final production model
+- **Baseline:** XceptionNet, which EfficientNet-B0 beat
+- **Extras:** FFT frequency fusion experiments and Grad-CAM for visual explanations
+- **Backend:** FastAPI deployed on Render
+- **Frontend:** React + Vite deployed on Vercel
+
+## Results
+
+Evaluated across 3 random seeds for statistical rigor:
+
+| Metric | Result (mean ± std) |
+| :--- | :--- |
+| Accuracy | 84.33% ± 0.34% |
+| ROC-AUC | 0.9321 ± 0.0053 |
+| Production accuracy (Haar Cascade pipeline) | 78.00% |
+
+## What Went Wrong (and Why It Matters)
+
+Honest limitations teach more than headline numbers:
+
+1. **Shortcut learning:** The model associated eyeglasses with "fake". A spurious correlation in the data, not a real signal.
+2. **Train/serve mismatch:** Training used MTCNN face detection, but production used Haar Cascade. This is why production accuracy dropped.
+3. **Poor generalization:** Tested on StyleGAN3 faces, the model failed. Detectors trained on one generator do not transfer to another.
+
+> [!WARNING]
+> Never report accuracy from a single run or a single generator. Multi-seed evaluation and cross-generator tests expose weaknesses early.
+
+## Key Lessons
+
+- Use the **same preprocessing** in training and production.
+- Run **multi-seed** experiments before claiming a number.
+- Use **Grad-CAM** to catch shortcut biases.
+- Write a **model card** documenting limitations.
+
+## Try It Yourself
+
+```bash
+git clone https://github.com/ramshaa01/deepfake-detector.git
+cd deepfake-detector
+```
+
+Follow the README for setup and running the API locally.
+
+## Conclusion
+
+A 40-day project taught me that deployment, evaluation rigor, and honest documentation matter as much as model accuracy. If you are building a detector, start with a strong baseline, test generalization early, and document failures openly.
