@@ -8,7 +8,9 @@
       "open-source",
       "community"
     ],
-    "updatedAt": "2026-10-18T10:45:00.000Z"
+    "updatedAt": "2026-10-18T10:45:00.000Z",
+    "wordCount": 4,
+    "readingTime": 1
   },
   "what-is-nexus-spring-of-code": {
     "author": "Aman Singh",
@@ -19,7 +21,9 @@
       "open-source",
       "knowledge-for-everyone"
     ],
-    "updatedAt": "2026-10-18T15:20:00.000Z"
+    "updatedAt": "2026-10-18T15:20:00.000Z",
+    "wordCount": 1128,
+    "readingTime": 6
   },
   "nexus-spring-of-code-2027": {
     "author": "NSoC Official",
@@ -30,6 +34,8 @@
       "open-source",
       "community"
     ],
-    "updatedAt": "2026-10-18T15:25:00.000Z"
+    "updatedAt": "2026-10-18T15:25:00.000Z",
+    "wordCount": 774,
+    "readingTime": 4
   }
 }

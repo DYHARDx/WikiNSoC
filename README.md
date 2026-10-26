@@ -28,6 +28,7 @@
 - [How to Contribute](#-how-to-contribute)
 - [Article MDX Template](#-article-mdx-template)
 - [Homepage Label Guide](#-homepage-label-guide)
+- [Reading Time & Word Count Calculation Rules](#-reading-time--word-count-calculation-rules)
 - [Local Development & Validation](#-local-development--validation)
 - [Automated GitHub Actions](#-automated-github-actions)
 - [Contributors & Hall of Fame](#-contributors--hall-of-fame)
@@ -59,7 +60,7 @@ graph LR
 1. **Submit**: Contributors add an `.mdx` file to the `posts/` directory via a GitHub Pull Request.
 2. **Automated Validation**: GitHub Actions automatically verifies frontmatter fields, slug formatting, and syntax.
 3. **Review & Tagging**: Maintainers review the content and attach relevant labels (e.g. `start-exploring`, `trending-topics`).
-4. **Live Synchronization**: Upon merge, GitHub Actions extracts author metadata and updates both `posts-metadata.json` and `contributors.json`. The web platform instantly serves the new article with dynamic SEO and static page generation.
+4. **Live Synchronization**: Upon merge, GitHub Actions extracts author metadata, computes estimated reading time and word count, and updates both `posts-metadata.json` and `contributors.json`. The web platform instantly serves the new article with dynamic SEO and static page generation.
 
 ---
 
@@ -188,6 +189,35 @@ When maintainers review your Pull Request, they assign PR labels that control wh
 
 ---
 
+## 📊 Reading Time & Word Count Calculation Rules
+
+Article cards and reading headers on [wiki.nsoc.in](https://wiki.nsoc.in) display word counts and estimated reading times sourced from `posts-metadata.json`. These metrics are computed automatically using predictable, consistent counting rules:
+
+1. **Frontmatter Exclusion**:
+   - YAML frontmatter located at the beginning of the file (between opening and closing `---` delimiters) is stripped before counting.
+2. **Code Blocks Exclusion**:
+   - Fenced code blocks (enclosed with ` ``` ` or `~~~`, including language tags like ```` ```javascript ```` or ```` ```mermaid ````) are skipped so technical syntax and ASCII diagrams do not skew prose reading velocity.
+   - Inline code spans (e.g. `` `npm run build` ``) remain part of the readable prose and are counted.
+3. **Word Count Computation**:
+   - The remaining body content is trimmed of leading and trailing whitespace.
+   - Text is split into words by whitespace sequences (`/\s+/`).
+   - Words array is filtered to ignore empty tokens.
+   - If a post has no prose content, `wordCount` is `0`.
+4. **Estimated Reading Time Computation**:
+   - Standard reading speed of **200 words per minute (WPM)** is used (the established standard for web documentation and blogs).
+   - Formula: `Math.ceil(wordCount / 200)`
+   - Minimum threshold: For non-empty posts (`wordCount > 0`), the minimum estimated reading time is **1 minute** (`Math.max(1, Math.ceil(wordCount / 200))`). For empty posts (`wordCount === 0`), reading time is `0`.
+
+### Summary Reference Table
+
+| Post | Body Words | Calculation (200 WPM) | `wordCount` | `readingTime` |
+| :--- | :--- | :--- | :--- | :--- |
+| `nsoc-announcement` | 4 words | `Math.max(1, Math.ceil(4 / 200))` | `4` | `1` min |
+| `nexus-spring-of-code-2027` | 774 words | `Math.ceil(774 / 200)` | `774` | `4` min |
+| `what-is-nexus-spring-of-code` | 1128 words | `Math.ceil(1128 / 200)` | `1128` | `6` min |
+
+---
+
 ## 🛠️ Local Development & Validation
 
 This repository includes standalone scripts that require **Node.js (v18+)** and zero extra npm dependencies.
@@ -199,8 +229,17 @@ npm run validate
 # Or validate a specific file
 node scripts/validate-posts.js posts/my-post.mdx
 
+# Calculate word count & estimated reading time for a post
+node scripts/calculate-post-stats.js posts/my-post.mdx
+
+# Sync or backfill posts-metadata.json
+npm run sync:metadata
+
 # Sync contributors.json manually
 npm run sync:contributors
+
+# Run unit tests
+npm test
 ```
 
 ---
@@ -214,7 +253,7 @@ npm run sync:contributors
   - 🔗 **Backlink & Link Audit**: Flags suspicious affiliate or spam SEO links.
   - 🔄 **Redundancy Check**: Ensures no duplicate topics with existing community posts.
   - ⚖️ **Maintainer Verdict**: Quick 🟢 Clean / 🟡 Revisions / 🔴 Spam verdict posted directly as a PR comment.
-- **`sync-post-metadata.yml`**: Triggers upon PR merge to `main`. It extracts the PR author (`assignees` / `pr.user`) and GitHub labels, updates `posts-metadata.json`, runs `sync-contributors.js` to update `contributors.json`, and commits them back to `main`.
+- **`sync-post-metadata.yml`**: Triggers upon PR merge to `main`. It extracts the PR author (`assignees` / `pr.user`) and GitHub labels, computes `wordCount` and estimated `readingTime` (ignoring frontmatter and code blocks), updates `posts-metadata.json`, runs `sync-contributors.js` to update `contributors.json`, and commits them back to `main`.
 
 ---
 

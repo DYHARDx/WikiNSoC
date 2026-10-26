@@ -4,8 +4,10 @@
   "description": "Content and community documentation repository for NSoC Wiki (wiki.nsoc.in)",
   "scripts": {
     "validate": "node scripts/validate-posts.js",
+    "sync:metadata": "node scripts/sync-post-metadata.js",
     "sync:contributors": "node scripts/sync-contributors.js",
-    "review": "node scripts/ai-pr-review.js"
+    "review": "node scripts/ai-pr-review.js",
+    "test": "node scripts/test-calculate-post-stats.js"
   },
   "keywords": [
     "nsoc",

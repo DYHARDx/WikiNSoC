@@ -74,7 +74,25 @@ jobs:
               return;
             }
 
-            // 4. Load or create posts-metadata.json
+            // 4. Load post stats calculator (ignoring frontmatter and code blocks)
+            let calculatePostStats;
+            try {
+              calculatePostStats = require(path.join(process.cwd(), 'scripts', 'calculate-post-stats.js')).calculatePostStats;
+            } catch (e) {
+              calculatePostStats = function(fileContent) {
+                const withoutFrontmatter = fileContent.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+                const withoutCodeBlocks = withoutFrontmatter
+                  .replace(/```[\s\S]*?```/g, '')
+                  .replace(/~~~[\s\S]*?~~~/g, '');
+                const trimmed = withoutCodeBlocks.trim();
+                const words = trimmed ? trimmed.split(/\s+/).filter(Boolean) : [];
+                const wordCount = words.length;
+                const readingTime = wordCount === 0 ? 0 : Math.max(1, Math.ceil(wordCount / 200));
+                return { wordCount, readingTime };
+              };
+            }
+
+            // 5. Load or create posts-metadata.json
             const metadataPath = path.join(process.cwd(), 'posts-metadata.json');
             let metadata = {};
             if (fs.existsSync(metadataPath)) {
@@ -87,14 +105,31 @@ jobs:
 
             for (const file of mdxFiles) {
               const slug = path.basename(file, '.mdx');
+              const fullPath = path.join(process.cwd(), file);
+              let wordCount = 0;
+              let readingTime = 0;
+
+              if (fs.existsSync(fullPath)) {
+                try {
+                  const content = fs.readFileSync(fullPath, 'utf8');
+                  const stats = calculatePostStats(content);
+                  wordCount = stats.wordCount;
+                  readingTime = stats.readingTime;
+                } catch (err) {
+                  console.warn(`Could not compute stats for ${file}:`, err.message);
+                }
+              }
+
               metadata[slug] = {
                 author: authorName,
                 githubUsername: githubUsername,
                 labels: labels,
                 updatedAt: new Date().toISOString(),
-                prNumber: prNumber
+                prNumber: prNumber,
+                wordCount: wordCount,
+                readingTime: readingTime
               };
-              console.log(`Updated metadata for ${slug}: author=${authorName} (@${githubUsername}), labels=[${labels.join(', ')}]`);
+              console.log(`Updated metadata for ${slug}: author=${authorName} (@${githubUsername}), labels=[${labels.join(', ')}], wordCount=${wordCount}, readingTime=${readingTime} min`);
             }
 
             fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');

@@ -85,7 +85,8 @@ Open a PR against the `main` branch of `DYHARDx/WikiNSoC`:
 ## 🎖️ Contributor Recognition
 
 Once your PR is merged:
-1. GitHub Actions automatically syncs your profile into `contributors.json`.
-2. You will be proudly showcased on the live [wiki.nsoc.in/contributors](https://wiki.nsoc.in/contributors) page!
+1. GitHub Actions automatically extracts post metadata, computes word count and estimated reading time (ignoring frontmatter and code blocks), and updates `posts-metadata.json`.
+2. GitHub Actions syncs your profile into `contributors.json`.
+3. You will be proudly showcased on the live [wiki.nsoc.in/contributors](https://wiki.nsoc.in/contributors) page!
 
 Happy contributing! 🚀
