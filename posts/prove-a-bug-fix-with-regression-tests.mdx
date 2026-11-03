@@ -1,0 +1,120 @@
+---
+title: "Prove a Bug Fix with a Failing Regression Test"
+description: "Build a small reproducible test, demonstrate its failure before the fix, and report honest validation evidence in an open-source pull request."
+date: "2026-11-03"
+category: "Software Engineering"
+tags:
+  - testing
+  - python
+  - open-source
+  - regression-tests
+published: true
+---
+
+# Prove a Bug Fix with a Failing Regression Test
+
+A passing test tells a reviewer something useful only if it checks the behavior that was broken. Before changing production code, capture a small input, the expected result, and the result from the unchanged revision. Then turn that example into a test that fails for the right reason.
+
+This walkthrough uses Python's standard library. You need Python 3.9 or newer and an empty working directory. In a real project, first read its contribution rules, check for existing work, and obtain assignment if the maintainer requires it.
+
+## State the behavior before choosing the patch
+
+Consider a deliberately limited amount parser. It accepts plain signed numbers and a bank-style `DR` suffix. A debit should retain a positive magnitude and a `DEBIT` direction. This example is a testing exercise, not a production financial parser.
+
+Save this broken implementation as `amounts.py`:
+
+```python
+from decimal import Decimal
+
+
+def parse_amount(raw):
+    text = raw.strip().upper()
+    magnitude = abs(Decimal(text.removesuffix(" DR")))
+    return magnitude, "CREDIT"
+```
+
+The input `100.00 DR` produces the right magnitude but the wrong direction. Reporting only that the function returns successfully would miss the defect.
+
+## Assert the observable result
+
+Save the following as `test_amounts.py`. The expected directions are explicit; the test does not copy the parser's decision logic.
+
+```python
+import unittest
+from decimal import Decimal, InvalidOperation
+
+from amounts import parse_amount
+
+
+class AmountTests(unittest.TestCase):
+    def test_direction_and_magnitude(self):
+        cases = [
+            ("100.00 DR", "DEBIT"),
+            ("-100.00", "DEBIT"),
+            ("100.00", "CREDIT"),
+        ]
+        for raw, direction in cases:
+            with self.subTest(raw=raw):
+                self.assertEqual(
+                    parse_amount(raw), (Decimal("100.00"), direction)
+                )
+
+    def test_invalid_number_is_rejected(self):
+        with self.assertRaises(InvalidOperation):
+            parse_amount("not-a-number")
+```
+
+Run the tests before editing `amounts.py`:
+
+```bash
+python -m unittest -v test_amounts
+```
+
+The direction test should report failures for both debit inputs. The positive-credit case and invalid-number test should still behave as expected. An import error, missing dependency, or permission failure is not evidence that you reproduced the bug. Resolve those setup problems before interpreting the assertion failures.
+
+## Make the smallest behavior change
+
+Replace only the implementation in `amounts.py`:
+
+```python
+from decimal import Decimal
+
+
+def parse_amount(raw):
+    text = raw.strip().upper()
+    is_debit = text.endswith(" DR") or text.startswith("-")
+    magnitude = abs(Decimal(text.removesuffix(" DR")))
+    return magnitude, "DEBIT" if is_debit else "CREDIT"
+```
+
+Run the same command again. Both test methods should pass. The test checks direction, magnitude, preserved credit behavior, and rejection of malformed input. It does not establish support for every currency notation, rounding rule, or non-finite Decimal value; those are outside this small exercise.
+
+In an existing repository, call the production function from your regression test. A test of a copied implementation can pass while the actual application remains broken. Mock external services when necessary, but leave the behavior under investigation real.
+
+## Keep the comparison fair
+
+Use the same interpreter, dependencies, inputs, and relevant environment settings for the before-and-after runs. Record the baseline commit. If you need to compare two revisions without disturbing your patch, a separate Git worktree can keep their files apart; dependency environments and test databases may still need separate configuration.
+
+Isolate files and database state too. Two test runs that share a database and both recreate its tables can corrupt each other's results. Conversely, separate in-memory SQLite engines do not automatically share a schema. Choose the isolation strategy that the project's fixtures actually support.
+
+For file-based tests, create synthetic fixtures inside a temporary directory and close file handles before another process opens them. Python's `TemporaryDirectory` can manage cleanup. Do not use real bank statements, credentials, customer exports, or your only copy of important data as a test fixture.
+
+## Expand verification around the changed behavior
+
+After the focused regression passes, run the surrounding tests and the repository's required lint, type, build, and integration checks. Keep their results separate. A mocked HTTP test is not proof that a live service accepted a request, and a local unit-test pass is not an upstream CI pass.
+
+If a wider check fails, determine whether your change caused it. When appropriate, compare the same check against unchanged code under the same environment. Describe the exact failure rather than calling it unrelated without evidence. Do not remove a required check to make the result green.
+
+## Give the reviewer reproducible evidence
+
+A useful PR description states the trigger, the wrong result, the corrected result, the baseline revision, and the commands you actually ran. Include the new regression's before-and-after outcome and any remaining limitations. Disclose AI assistance when used, and follow the project's policy about it.
+
+Keep generated metadata, unrelated dependency upgrades, and cosmetic cleanup out of the patch unless the contribution rules require them. The reviewer should be able to connect each changed line to the reported problem.
+
+## Further reading
+
+- [Python unittest documentation](https://docs.python.org/3/library/unittest.html): assertions, subtests, and command-line execution.
+- [Python tempfile documentation](https://docs.python.org/3/library/tempfile.html): temporary files and directory lifetimes.
+- [Git worktree documentation](https://git-scm.com/docs/git-worktree): maintaining separate checkouts of a repository.
+
+Editorial disclosure: AI assisted the drafting of this article. Its runnable example was checked against both the broken and corrected implementations; no live financial integration is claimed.
